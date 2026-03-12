@@ -1864,16 +1864,22 @@
         function buildSchedule(year, month, workers, festivosSet) {
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const days = [];
+            // Same rotation model as Python app:
+            // Anchor: 16-Mar-2026 where A,B,C,D = workers[0..3]
+            const rotationAnchor = 74; // days since 2026-01-01
+            const rotationBaseDate = new Date(2026, 0, 1);
             for (let d = 1; d <= daysInMonth; d++) {
                 const date = new Date(year, month, d);
-                const dayIndex = d - 1;
-                const block = Math.floor(dayIndex / 2);
-                const rot = block % workers.length;
+                const globalDay = Math.floor((date - rotationBaseDate) / (1000 * 60 * 60 * 24));
+                const pairIndex = Math.floor((globalDay - rotationAnchor) / 2);
                 const isSunday = date.getDay() === 0;
                 const isHoliday = festivosSet.has(d);
                 const isDomFest = isSunday || isHoliday;
                 const quincena = d <= 15 ? 1 : 2;
-                const dayShifts = shifts.map((_, sIdx) => workers[(sIdx + rot) % workers.length]);
+                const dayShifts = shifts.map((_, sIdx) => {
+                    const workerIdx = ((sIdx + pairIndex) % workers.length + workers.length) % workers.length;
+                    return workers[workerIdx];
+                });
                 days.push({ date, d, isSunday, isHoliday, isDomFest, quincena, assignments: dayShifts });
             }
             return days;
