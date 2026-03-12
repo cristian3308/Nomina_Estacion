@@ -1,0 +1,2513 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <title>NOMINA PRO – Estación de Servicio</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --bg2: #1a1a2e;
+            --bg3: #16213e;
+            --card: #1e2745;
+            --card-h: #253255;
+            --sidebar: #0d1b2a;
+            --accent: #00d4aa;
+            --accent2: #7c4dff;
+            --accent3: #ff6b6b;
+            --accent4: #ffd93d;
+            --text: #e8eaed;
+            --text2: #9aa0a6;
+            --text3: #5f6368;
+            --success: #00e676;
+            --warning: #ffab00;
+            --danger: #ff5252;
+            --info: #448aff;
+            --border: #2d3748;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+
+        @media(max-width:900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            background: var(--sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .brand {
+            padding: 24px 20px 12px;
+        }
+
+        .brand-name {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .brand-name span:first-child {
+            color: var(--accent);
+        }
+
+        .brand-name span:last-child {
+            color: var(--accent2);
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: var(--text2);
+            margin-top: 4px;
+        }
+
+        .brand-info {
+            font-size: 10px;
+            color: var(--accent);
+            margin-top: 2px;
+        }
+
+        .brand-info2 {
+            font-size: 10px;
+            color: var(--text3);
+        }
+
+        .sep {
+            height: 1px;
+            background: var(--border);
+            margin: 10px 20px;
+        }
+
+        .period-section {
+            padding: 4px 20px;
+        }
+
+        .period-section .label {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .period-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .period-row select {
+            flex: 1;
+            padding: 7px 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .period-row select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .nav-section {
+            padding: 4px 12px;
+        }
+
+        .nav-section .label {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 8px;
+            margin-bottom: 4px;
+        }
+
+        .nav-btn {
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text2);
+            font-size: 13px;
+            font-weight: 500;
+            text-align: left;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .nav-btn:hover {
+            background: var(--bg3);
+            color: var(--text);
+        }
+
+        .nav-btn.active {
+            background: var(--bg3);
+            color: var(--accent);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .sidebar-footer .date {
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        .sidebar-footer .copy {
+            font-size: 10px;
+            color: var(--text3);
+            margin-top: 2px;
+        }
+
+        /* ── MAIN ── */
+        .main {
+            padding: 20px 24px 30px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        /* Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .page-period {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text2);
+        }
+
+        /* Stat Cards */
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            transition: border-color .2s;
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent);
+        }
+
+        .stat-bar {
+            width: 4px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text2);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .stat-hint {
+            font-size: 10px;
+            color: var(--text3);
+            margin-top: 3px;
+        }
+
+        /* Glow Cards */
+        .glow-card {
+            background: var(--card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: border-color .2s;
+            overflow: hidden;
+        }
+
+        .glow-card:hover {
+            border-color: var(--accent2);
+        }
+
+        .glow-card-title {
+            font-size: 14px;
+            font-weight: 700;
+            padding: 14px 18px 8px;
+        }
+
+        /* Tables */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead th {
+            background: var(--bg3);
+            color: var(--text2);
+            font-weight: 600;
+            font-size: 11px;
+            padding: 10px 8px;
+            text-align: right;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        thead th:first-child {
+            text-align: left;
+        }
+
+        tbody td {
+            padding: 8px;
+            text-align: right;
+            border-bottom: 1px solid rgba(45, 55, 72, .5);
+            white-space: nowrap;
+            background: var(--bg);
+        }
+
+        tbody td:first-child {
+            text-align: left;
+            font-weight: 500;
+        }
+
+        tbody tr:nth-child(even) td {
+            background: var(--bg2);
+        }
+
+        tbody tr:hover td {
+            background: var(--bg3);
+        }
+
+        .small-input {
+            width: 56px;
+            padding: 3px 5px;
+            font-size: 11px;
+            text-align: right;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .small-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .badge-ok {
+            background: rgba(0, 230, 118, .12);
+            color: var(--success);
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-warn {
+            background: rgba(255, 82, 82, .12);
+            color: var(--danger);
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .btn-accent:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-accent2 {
+            background: var(--accent2);
+            color: #fff;
+        }
+
+        .btn-accent2:hover {
+            filter: brightness(1.15);
+        }
+
+        .btn-danger {
+            background: var(--accent3);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-ghost {
+            background: var(--bg3);
+            color: var(--text);
+        }
+
+        .btn-ghost:hover {
+            background: var(--card-h);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--bg);
+        }
+
+        .btn-success:hover {
+            filter: brightness(1.1);
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Config grid */
+        .cfg-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .cfg-item label {
+            display: block;
+            font-size: 11px;
+            color: var(--text2);
+            margin-bottom: 3px;
+        }
+
+        .cfg-item input,
+        .cfg-item select {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .cfg-item input:focus,
+        .cfg-item select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .cfg-section {
+            margin-bottom: 20px;
+        }
+
+        .cfg-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cfg-section-title::before {
+            content: '';
+            display: inline-block;
+            width: 3px;
+            height: 14px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        /* Turno pills */
+        .turno-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .turno-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 8px;
+            background: var(--bg3);
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+        }
+
+        .turno-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Workers section */
+        .worker-list {
+            display: grid;
+            gap: 4px;
+        }
+
+        .worker-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 0.5fr 1.5fr 0.7fr;
+            gap: 8px;
+            align-items: center;
+            padding: 8px 14px;
+            background: var(--bg2);
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .worker-row:nth-child(even) {
+            background: var(--bg3);
+        }
+
+        .worker-row-header {
+            background: var(--bg3) !important;
+            font-weight: 600;
+            color: var(--text2);
+            font-size: 11px;
+        }
+
+        .worker-tipo {
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+        .worker-tipo.emp {
+            color: var(--accent);
+        }
+
+        .worker-tipo.pre {
+            color: var(--warning);
+        }
+
+        /* Quick actions */
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px 18px 16px;
+        }
+
+        /* Two-col layout */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 14px;
+        }
+
+        @media(max-width:1100px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .note {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        .status-text {
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        /* Festivo card */
+        .festivo-item {
+            padding: 4px 16px;
+            font-size: 12px;
+            color: var(--accent3);
+        }
+
+        /* Anim */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .page.active {
+            animation: fadeIn .25s ease;
+        }
+
+        /* ── HORARIO ── */
+        .hor-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .hor-legend {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            background: var(--bg3);
+            border-radius: 10px;
+            margin-bottom: 14px;
+        }
+
+        .hor-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .hor-legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .hor-legend-sep {
+            color: var(--text3);
+            margin: 0 4px;
+        }
+
+        .hor-dom-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .hor-table-wrap {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .hor-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .hor-table th {
+            background: var(--accent);
+            color: var(--bg);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 10px 6px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .hor-table th:first-child {
+            text-align: left;
+            padding-left: 14px;
+        }
+
+        .hor-table td {
+            padding: 5px 4px;
+            text-align: center;
+            border-bottom: 1px solid rgba(45, 55, 72, .4);
+            font-size: 12px;
+        }
+
+        .hor-table td:first-child {
+            text-align: left;
+            padding-left: 14px;
+            font-weight: 600;
+        }
+
+        .hor-table tr.row-dom td:first-child {
+            color: #ff5252;
+        }
+
+        .hor-table tr.row-fest td:first-child {
+            color: #ff9800;
+        }
+
+        .hor-table tr.row-dom {
+            background: #2a1a1a;
+        }
+
+        .hor-table tr.row-fest {
+            background: #2a2415;
+        }
+
+        .hor-table tr.row-even {
+            background: var(--bg2);
+        }
+
+        .hor-table tr.row-odd {
+            background: var(--bg3);
+        }
+
+        .hor-cell {
+            border-radius: 6px;
+            padding: 4px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #1a1a2e;
+            min-width: 60px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .hor-cell-empty {
+            color: var(--text3);
+            font-size: 10px;
+        }
+
+        .hor-resumen {
+            margin-top: 16px;
+        }
+
+        .hor-resumen-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--bg3);
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+
+        .hor-resumen-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text);
+            min-width: 100px;
+        }
+
+        .hor-resumen-badge {
+            font-size: 10px;
+            font-weight: 700;
+            color: #1a1a2e;
+            padding: 3px 10px;
+            border-radius: 5px;
+        }
+
+        .hor-resumen-total {
+            margin-left: auto;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .hor-festivos-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg3);
+            border-radius: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .hor-festivos-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #ff9800;
+        }
+
+        .hor-festivos-item {
+            font-size: 11px;
+            color: var(--text);
+        }
+
+        /* ── DASH: HORARIO HOY ── */
+        .dash-today {
+            margin-bottom: 16px;
+        }
+
+        .dash-today-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4px 10px;
+        }
+
+        .dash-today-date {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .dash-today-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 12px;
+            border-radius: 6px;
+        }
+
+        .dash-today-badge.dom {
+            background: #3d1f1f;
+            color: #ff5252;
+        }
+
+        .dash-today-badge.fest {
+            background: #3d2e1a;
+            color: #ff9800;
+        }
+
+        .dash-today-badge.normal {
+            background: var(--bg3);
+            color: var(--accent);
+        }
+
+        .dash-today-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        @media(max-width:700px) {
+            .dash-today-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .dash-today-card {
+            background: var(--bg2);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: transform .15s, box-shadow .15s;
+        }
+
+        .dash-today-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+        }
+
+        .dash-today-top {
+            padding: 10px 14px;
+            text-align: center;
+        }
+
+        .dash-today-turno {
+            font-size: 22px;
+            font-weight: 900;
+            color: #1a1a2e;
+            letter-spacing: 1px;
+        }
+
+        .dash-today-hora {
+            font-size: 10px;
+            font-weight: 600;
+            color: rgba(26, 26, 46, .7);
+            margin-top: 2px;
+        }
+
+        .dash-today-bottom {
+            background: var(--bg3);
+            padding: 10px 14px;
+            text-align: center;
+        }
+
+        .dash-today-worker {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .dash-today-status {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .dash-today-now {
+            position: relative;
+        }
+
+        .dash-today-now::after {
+            content: 'AHORA';
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            font-size: 8px;
+            font-weight: 800;
+            background: var(--accent);
+            color: var(--bg);
+            padding: 2px 7px;
+            border-radius: 4px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .5;
+            }
+        }
+
+        /* ── TRABAJADORES ── */
+        .trab-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .trab-count {
+            font-size: 12px;
+            color: var(--text2);
+            font-weight: 600;
+        }
+
+        .trab-group-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 0 8px;
+        }
+
+        .trab-group-accent {
+            width: 4px;
+            height: 22px;
+            border-radius: 2px;
+        }
+
+        .trab-group-label {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: .5px;
+        }
+
+        .trab-group-count {
+            font-size: 11px;
+            color: var(--text3);
+        }
+
+        .trab-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+        .trab-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 16px rgba(0, 212, 170, .08);
+        }
+
+        .trab-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 800;
+            color: #1a1a2e;
+            flex-shrink: 0;
+        }
+
+        .trab-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .trab-name-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .trab-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .trab-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: var(--bg);
+        }
+
+        .trab-detail {
+            font-size: 11px;
+            color: var(--text2);
+            margin-top: 3px;
+        }
+
+        .trab-detail2 {
+            font-size: 10px;
+            color: var(--text3);
+            margin-top: 2px;
+        }
+
+        .trab-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .trab-btn {
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity .15s;
+            color: #fff;
+        }
+
+        .trab-btn:hover {
+            opacity: .85;
+        }
+
+        .trab-btn-edit {
+            background: var(--info);
+        }
+
+        .trab-btn-del {
+            background: var(--danger);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 520px;
+            max-width: 94vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 28px 28px 20px;
+            animation: fadeIn .2s;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .modal-field {
+            margin-bottom: 12px;
+        }
+
+        .modal-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+            margin-bottom: 4px;
+        }
+
+        .modal-field input,
+        .modal-field select {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .modal-field input:focus,
+        .modal-field select:focus {
+            border-color: var(--accent);
+        }
+
+        .modal-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .modal-btns {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <!-- ═══ SIDEBAR ═══ -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-name"><span>NOMINA</span> <span>PRO</span></div>
+                <div class="brand-sub" id="brandSub">Estación de Servicio</div>
+                <div class="brand-info" id="brandSmlmv">SMLMV $ 1.750.905</div>
+                <div class="brand-info2" id="brandVhora">V.Hora $ 7.958</div>
+            </div>
+            <div class="sep"></div>
+
+            <div class="period-section">
+                <div class="label">Período</div>
+                <div class="period-row">
+                    <select id="month">
+                        <option value="0">Enero</option>
+                        <option value="1">Febrero</option>
+                        <option value="2" selected>Marzo</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Mayo</option>
+                        <option value="5">Junio</option>
+                        <option value="6">Julio</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Septiembre</option>
+                        <option value="9">Octubre</option>
+                        <option value="10">Noviembre</option>
+                        <option value="11">Diciembre</option>
+                    </select>
+                    <select id="year">
+                        <option>2024</option>
+                        <option>2025</option>
+                        <option selected>2026</option>
+                        <option>2027</option>
+                        <option>2028</option>
+                        <option>2029</option>
+                        <option>2030</option>
+                    </select>
+                </div>
+            </div>
+            <div class="sep"></div>
+
+            <div class="nav-section">
+                <div class="label">Menú</div>
+                <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+                <button class="nav-btn" data-page="horario">Horario</button>
+                <button class="nav-btn" data-page="trabajadores">Trabajadores</button>
+                <button class="nav-btn" data-page="nomina">Nómina</button>
+                <button class="nav-btn" data-page="config">Configuración</button>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="date" id="footerDate"></div>
+                <div class="copy">Colombia 2026</div>
+            </div>
+        </aside>
+
+        <!-- ═══ MAIN CONTENT ═══ -->
+        <main class="main">
+
+            <!-- ░░░ PAGE: DASHBOARD ░░░ -->
+            <div class="page active" id="pg-dashboard">
+                <div class="page-header">
+                    <div class="page-title">Dashboard</div>
+                    <div class="page-period" id="dashPeriod">Marzo 2026</div>
+                </div>
+
+                <div class="stat-cards" id="statCards">
+                    <div class="stat-card">
+                        <div class="stat-bar" style="background:var(--accent)"></div>
+                        <div class="stat-content">
+                            <div class="stat-label">Trabajadores</div>
+                            <div class="stat-value" id="kpiWorkers" style="color:var(--accent)">4</div>
+                            <div class="stat-hint">Isla 1</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-bar" style="background:var(--info)"></div>
+                        <div class="stat-content">
+                            <div class="stat-label">Valor Hora</div>
+                            <div class="stat-value" id="kpiHora" style="color:var(--info)">–</div>
+                            <div class="stat-hint">Salario / Horas mes</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-bar" style="background:var(--accent4)"></div>
+                        <div class="stat-content">
+                            <div class="stat-label">Base Quincena</div>
+                            <div class="stat-value" id="kpiBase" style="color:var(--accent4)">–</div>
+                            <div class="stat-hint">Salario / 2</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-bar" style="background:var(--accent2)"></div>
+                        <div class="stat-content">
+                            <div class="stat-label">Mes</div>
+                            <div class="stat-value" id="kpiMes" style="color:var(--accent2)">–</div>
+                            <div class="stat-hint" id="kpiDias">–</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Horario de Hoy -->
+                <div class="glow-card dash-today" style="border-color:rgba(0,212,170,.25);">
+                    <div class="glow-card-title" style="color:var(--accent);">📅 Horario de Hoy</div>
+                    <div style="padding:0 18px 16px;">
+                        <div class="dash-today-header">
+                            <div class="dash-today-date" id="dashTodayDate">Miércoles 11 de Marzo 2026</div>
+                            <div class="dash-today-badge normal" id="dashTodayBadge">Día Normal</div>
+                        </div>
+                        <div class="dash-today-grid" id="dashTodayGrid"></div>
+                    </div>
+                </div>
+
+                <div class="two-col">
+                    <div>
+                        <!-- Worker List -->
+                        <div class="glow-card" style="margin-bottom:14px;">
+                            <div class="glow-card-title">Resumen por Trabajador</div>
+                            <div style="padding:0 14px 14px;">
+                                <div class="worker-list" id="workerList">
+                                    <div class="worker-row worker-row-header">
+                                        <span>Nombre</span><span>Tipo</span><span>Isla</span><span>Turno</span><span>Desc</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <!-- Turnos -->
+                        <div class="glow-card" style="margin-bottom:14px;">
+                            <div class="glow-card-title">Turnos Disponibles</div>
+                            <div style="padding:6px 18px 14px;" id="turnosList"></div>
+                        </div>
+
+                        <!-- Festivos -->
+                        <div class="glow-card" style="margin-bottom:14px;border-color:rgba(255,107,107,.2);">
+                            <div class="glow-card-title" style="color:var(--accent3);" id="festivosTitle">Festivos Marzo
+                            </div>
+                            <div id="festivosContent"></div>
+                            <div style="height:10px;"></div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="glow-card" style="border-color:rgba(0,212,170,.2);">
+                            <div class="glow-card-title" style="color:var(--success);">Acciones Rápidas</div>
+                            <div class="quick-actions">
+                                <button class="btn btn-accent"
+                                    onclick="showPage('nomina');document.getElementById('btnCalcular').click();">Calcular
+                                    Nómina</button>
+                                <button class="btn btn-accent2" onclick="showPage('config')">Configuración</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ░░░ PAGE: HORARIO ░░░ -->
+            <div class="page" id="pg-horario">
+                <div class="page-header">
+                    <div class="page-title">Horario de Turnos</div>
+                    <div class="page-period" id="horPeriod">Marzo 2026</div>
+                </div>
+
+                <div class="hor-controls">
+                    <button class="btn btn-ghost" id="horPrev">◀ Mes Anterior</button>
+                    <button class="btn btn-ghost" id="horNext">Mes Siguiente ▶</button>
+                </div>
+
+                <div class="hor-legend" id="horLegend"></div>
+
+                <div class="hor-table-wrap">
+                    <table class="hor-table" id="horTable">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="glow-card hor-resumen" style="border-color:rgba(68,138,255,.3);">
+                    <div class="glow-card-title" style="color:var(--info);">Resumen del Mes</div>
+                    <div style="padding:4px 14px 14px;" id="horResumen"></div>
+                </div>
+
+                <div class="hor-festivos-bar" id="horFestivos"></div>
+            </div>
+
+            <!-- ░░░ PAGE: TRABAJADORES ░░░ -->
+            <div class="page" id="pg-trabajadores">
+                <div class="page-header">
+                    <div class="page-title">Trabajadores</div>
+                    <div class="trab-header">
+                        <span class="trab-count" id="trabCount">4 trabajadores</span>
+                        <button class="btn btn-accent" id="btnAddWorker">+ Nuevo Trabajador</button>
+                    </div>
+                </div>
+                <div id="trabList"></div>
+            </div>
+
+            <!-- Modal Trabajador -->
+            <div class="modal-overlay" id="trabModal">
+                <div class="modal">
+                    <div class="modal-title" id="trabModalTitle">Nuevo Trabajador</div>
+                    <div class="modal-row">
+                        <div class="modal-field"><label>Nombre completo</label><input type="text" id="mNombre"
+                                placeholder="Ej: Carlos Martinez" /></div>
+                        <div class="modal-field"><label>Cédula (C.C.)</label><input type="text" id="mCedula"
+                                placeholder="Ej: 1.098.123.456" /></div>
+                    </div>
+                    <div class="modal-row">
+                        <div class="modal-field"><label>Cargo</label><input type="text" id="mCargo" value="Islero" />
+                        </div>
+                        <div class="modal-field"><label>Isla</label><select id="mIsla">
+                                <option value="1">Isla 1</option>
+                                <option value="2">Isla 2</option>
+                            </select></div>
+                    </div>
+                    <div class="modal-row">
+                        <div class="modal-field"><label>Turno por defecto</label><select id="mTurno">
+                                <option value="A">A – Mañana 06-12</option>
+                                <option value="B">B – Tarde 12-18</option>
+                                <option value="C">C – Noche 18-00</option>
+                                <option value="D">D – Madrugada 00-06</option>
+                            </select></div>
+                        <div class="modal-field"><label>Día de descanso</label><select id="mDescanso">
+                                <option>Dom</option>
+                                <option>Lun</option>
+                                <option>Mar</option>
+                                <option>Mié</option>
+                                <option>Jue</option>
+                                <option>Vie</option>
+                                <option>Sáb</option>
+                            </select></div>
+                    </div>
+                    <div class="modal-row">
+                        <div class="modal-field"><label>Tipo de vinculación</label><select id="mTipo">
+                                <option value="empleado">Empleado</option>
+                                <option value="prestador">Prestador de Servicio</option>
+                            </select></div>
+                        <div class="modal-field"><label>Salario mensual</label><input type="number" id="mSalario"
+                                value="1750905" /></div>
+                    </div>
+                    <div class="modal-btns">
+                        <button class="btn btn-ghost" id="btnCancelWorker">Cancelar</button>
+                        <button class="btn btn-accent" id="btnSaveWorker">Guardar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ░░░ PAGE: NOMINA ░░░ -->
+            <div class="page" id="pg-nomina">
+                <div class="page-header">
+                    <div class="page-title">Nómina Quincenal</div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <button class="btn btn-accent" id="btnCalcular">Calcular Nómina</button>
+                        <button class="btn btn-ghost" id="btnPdfTodos">Descargar PDFs (todos)</button>
+                        <span class="status-text" id="status"></span>
+                    </div>
+                </div>
+
+                <div class="turno-pills">
+                    <div class="turno-pill">
+                        <div class="turno-dot" style="background:#FFF9C4"></div>06:00–12:00
+                    </div>
+                    <div class="turno-pill">
+                        <div class="turno-dot" style="background:#FFE0B2"></div>12:00–18:00
+                    </div>
+                    <div class="turno-pill">
+                        <div class="turno-dot" style="background:#BBDEFB"></div>18:00–00:00 (3D/3N)
+                    </div>
+                    <div class="turno-pill">
+                        <div class="turno-dot" style="background:#90CAF9"></div>00:00–06:00
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table id="tablaNomina">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <p class="note">
+                    Ajusta en la columna <strong>Dom. con comp.</strong> cuántos domingos/festivos tuvieron descanso
+                    compensatorio.
+                    Los domingos sin compensatorio generan un día de salario adicional.
+                </p>
+            </div>
+
+            <!-- ░░░ PAGE: CONFIGURACIÓN ░░░ -->
+            <div class="page" id="pg-config">
+                <div class="page-header">
+                    <div class="page-title">Configuración</div>
+                    <button class="btn btn-accent"
+                        onclick="showPage('nomina');document.getElementById('btnCalcular').click();">Aplicar y
+                        Calcular</button>
+                </div>
+
+                <div class="glow-card" style="padding:20px;margin-bottom:16px;">
+                    <div class="cfg-section">
+                        <div class="cfg-section-title">Datos de la Empresa</div>
+                        <div class="cfg-grid">
+                            <div class="cfg-item"><label>Nombre empresa</label><input type="text" id="cfgEmpresa"
+                                    value="Estación Servicentro San Pedro" /></div>
+                            <div class="cfg-item"><label>NIT</label><input type="text" id="cfgNIT" value="3.047.352" />
+                            </div>
+                            <div class="cfg-item"><label>Dirección</label><input type="text" id="cfgDireccion"
+                                    value="Calle Principal #123, Ciudad" /></div>
+                            <div class="cfg-item"><label>Cargo por defecto</label><input type="text" id="cfgCargo"
+                                    value="Islero" /></div>
+                            <div class="cfg-item"><label>Isla / Ubicación</label><input type="text" id="cfgIsla"
+                                    value="1" /></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glow-card" style="padding:20px;margin-bottom:16px;">
+                    <div class="cfg-section">
+                        <div class="cfg-section-title">Parámetros Nómina 2026</div>
+                        <div class="cfg-grid">
+                            <div class="cfg-item"><label>Salario mensual (SMLMV)</label><input type="number"
+                                    id="salario" value="1750905" step="1000" /></div>
+                            <div class="cfg-item"><label>Aux. transporte mensual</label><input type="number"
+                                    id="auxilio" value="249095" step="1000" /></div>
+                            <div class="cfg-item"><label>Horas al mes</label><input type="number" id="horasMes"
+                                    value="210" /></div>
+                            <div class="cfg-item"><label>% recargo nocturno</label><input type="number" id="recNoct"
+                                    value="0.35" step="0.01" /></div>
+                            <div class="cfg-item"><label>% recargo dom./festivo</label><input type="number" id="recDom"
+                                    value="0.80" step="0.01" /></div>
+                            <div class="cfg-item"><label>% salud trabajador</label><input type="number" id="saludPct"
+                                    value="0.04" step="0.01" /></div>
+                            <div class="cfg-item"><label>% pensión trabajador</label><input type="number"
+                                    id="pensionPct" value="0.04" step="0.01" /></div>
+                            <div class="cfg-item"><label>Días festivos del mes</label><input type="text" id="festivos"
+                                    placeholder="23,29" /></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glow-card" style="padding:20px;margin-bottom:16px;">
+                    <div class="cfg-section">
+                        <div class="cfg-section-title">Aportes Patronales % (sobre base quincenal)</div>
+                        <div class="cfg-grid">
+                            <div class="cfg-item"><label>Pensión empleador</label><input type="number" id="cfgPensEmpl"
+                                    value="12" step="0.01" /></div>
+                            <div class="cfg-item"><label>ARL</label><input type="number" id="cfgARL" value="6.96"
+                                    step="0.01" /></div>
+                            <div class="cfg-item"><label>Caja compensación</label><input type="number" id="cfgCaja"
+                                    value="4" step="0.01" /></div>
+                        </div>
+                    </div>
+                    <div class="cfg-section" style="margin-top:14px;">
+                        <div class="cfg-section-title">Provisiones %</div>
+                        <div class="cfg-grid">
+                            <div class="cfg-item"><label>Prima</label><input type="number" id="cfgPrima" value="8.33"
+                                    step="0.01" /></div>
+                            <div class="cfg-item"><label>Cesantías</label><input type="number" id="cfgCes" value="8.33"
+                                    step="0.01" /></div>
+                            <div class="cfg-item"><label>Int. cesantías</label><input type="number" id="cfgIntCes"
+                                    value="12" step="0.01" /></div>
+                            <div class="cfg-item"><label>Vacaciones</label><input type="number" id="cfgVac" value="4.17"
+                                    step="0.01" /></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glow-card" style="padding:20px;margin-bottom:16px;">
+                    <div class="cfg-section">
+                        <div class="cfg-section-title">Trabajadores (Rotación Isla 1)</div>
+                        <div class="cfg-grid">
+                            <div class="cfg-item"><label>Trabajador 1</label><input type="text" id="w1" value="Jhon" />
+                            </div>
+                            <div class="cfg-item"><label>Trabajador 2</label><input type="text" id="w2"
+                                    value="Fabian" /></div>
+                            <div class="cfg-item"><label>Trabajador 3</label><input type="text" id="w3" value="Kevin" />
+                            </div>
+                            <div class="cfg-item"><label>Trabajador 4</label><input type="text" id="w4" value="Huber" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // ══════════ NAV ══════════
+        const navBtns = document.querySelectorAll('.nav-btn');
+        function showPage(name) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('pg-' + name).classList.add('active');
+            navBtns.forEach(b => {
+                b.classList.toggle('active', b.dataset.page === name);
+            });
+            if (name === 'dashboard') refreshDashboard();
+            if (name === 'horario') renderHorario();
+            if (name === 'trabajadores') renderTrabajadores();
+        }
+        navBtns.forEach(b => b.addEventListener('click', () => showPage(b.dataset.page)));
+
+        // ══════════ FIREBASE ══════════
+        firebase.initializeApp({
+            apiKey: "AIzaSyBGmyYlyFvA3_ciM45GJgAUbkuEJs_Jnrk",
+            authDomain: "nomina-f18b2.firebaseapp.com",
+            projectId: "nomina-f18b2",
+            storageBucket: "nomina-f18b2.firebasestorage.app",
+            messagingSenderId: "367274438011",
+            appId: "1:367274438011:web:53a3fb913422b0019861de"
+        });
+        const db = firebase.firestore();
+        const DOC_ID = 'principal';
+
+        // ══════════ TRABAJADORES DATA ══════════
+        const STORAGE_KEY_TRAB = 'nominapro_trabajadores';
+        const STORAGE_KEY_CFG = 'nominapro_config';
+
+        const defaultTrabajadores = [
+            { nombre: 'Jhon', cedula: '', cargo: 'Islero', isla: 1, turno: 'A', descanso: 'Dom', tipo: 'empleado', salario: 1750905 },
+            { nombre: 'Fabian', cedula: '', cargo: 'Islero', isla: 1, turno: 'B', descanso: 'Dom', tipo: 'empleado', salario: 1750905 },
+            { nombre: 'Kevin', cedula: '', cargo: 'Islero', isla: 1, turno: 'C', descanso: 'Dom', tipo: 'empleado', salario: 1750905 },
+            { nombre: 'Huber', cedula: '', cargo: 'Islero', isla: 1, turno: 'D', descanso: 'Dom', tipo: 'empleado', salario: 1750905 }
+        ];
+
+        let trabajadoresData = loadTrabajadores();
+
+        function loadTrabajadores() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY_TRAB);
+                if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length) return parsed; }
+            } catch (e) { }
+            return JSON.parse(JSON.stringify(defaultTrabajadores));
+        }
+
+        function saveTrabajadores() {
+            try { localStorage.setItem(STORAGE_KEY_TRAB, JSON.stringify(trabajadoresData)); } catch (e) { }
+            saveToFirebase();
+        }
+
+        function saveConfig() {
+            try {
+                const cfg = {
+                    empresa: document.getElementById('cfgEmpresa').value,
+                    nit: document.getElementById('cfgNIT').value,
+                    direccion: document.getElementById('cfgDireccion').value,
+                    cargo: document.getElementById('cfgCargo').value,
+                    isla: document.getElementById('cfgIsla').value,
+                    salario: document.getElementById('salario').value,
+                    auxilio: document.getElementById('auxilio').value,
+                    horasMes: document.getElementById('horasMes').value,
+                    recNoct: document.getElementById('recNoct').value,
+                    recDom: document.getElementById('recDom').value,
+                    saludPct: document.getElementById('saludPct').value,
+                    pensionPct: document.getElementById('pensionPct').value,
+                    festivos: document.getElementById('festivos').value,
+                    pensEmpl: document.getElementById('cfgPensEmpl').value,
+                    arl: document.getElementById('cfgARL').value,
+                    caja: document.getElementById('cfgCaja').value,
+                    prima: document.getElementById('cfgPrima').value,
+                    ces: document.getElementById('cfgCes').value,
+                    intCes: document.getElementById('cfgIntCes').value,
+                    vac: document.getElementById('cfgVac').value,
+                    month: document.getElementById('month').value,
+                    year: document.getElementById('year').value
+                };
+                localStorage.setItem(STORAGE_KEY_CFG, JSON.stringify(cfg));
+            } catch (e) { }
+            saveToFirebase();
+        }
+
+        // Firebase save (debounced)
+        let _fbTimer = null;
+        function saveToFirebase() {
+            clearTimeout(_fbTimer);
+            _fbTimer = setTimeout(() => {
+                const cfgRaw = localStorage.getItem(STORAGE_KEY_CFG);
+                const payload = {
+                    trabajadores: trabajadoresData,
+                    config: cfgRaw ? JSON.parse(cfgRaw) : {},
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                db.collection('nomina').doc(DOC_ID).set(payload, { merge: true })
+                    .then(() => console.log('☁️ Guardado en Firebase'))
+                    .catch(e => console.warn('Firebase save error:', e));
+            }, 1500);
+        }
+
+        // Firebase load
+        async function loadFromFirebase() {
+            try {
+                const snap = await db.collection('nomina').doc(DOC_ID).get();
+                if (snap.exists) {
+                    const data = snap.data();
+                    if (data.trabajadores && Array.isArray(data.trabajadores) && data.trabajadores.length) {
+                        trabajadoresData = data.trabajadores;
+                        localStorage.setItem(STORAGE_KEY_TRAB, JSON.stringify(trabajadoresData));
+                        syncWorkersToInputs();
+                    }
+                    if (data.config && typeof data.config === 'object') {
+                        localStorage.setItem(STORAGE_KEY_CFG, JSON.stringify(data.config));
+                        loadConfig();
+                    }
+                    console.log('☁️ Datos cargados de Firebase');
+                    refreshDashboard();
+                }
+            } catch (e) {
+                console.warn('Firebase load error (usando datos locales):', e);
+            }
+        }
+
+        function loadConfig() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY_CFG);
+                if (!raw) return;
+                const cfg = JSON.parse(raw);
+                const map = {
+                    cfgEmpresa: 'empresa', cfgNIT: 'nit', cfgDireccion: 'direccion',
+                    cfgCargo: 'cargo', cfgIsla: 'isla', salario: 'salario',
+                    auxilio: 'auxilio', horasMes: 'horasMes', recNoct: 'recNoct',
+                    recDom: 'recDom', saludPct: 'saludPct', pensionPct: 'pensionPct',
+                    festivos: 'festivos', cfgPensEmpl: 'pensEmpl', cfgARL: 'arl',
+                    cfgCaja: 'caja', cfgPrima: 'prima', cfgCes: 'ces',
+                    cfgIntCes: 'intCes', cfgVac: 'vac', month: 'month', year: 'year'
+                };
+                for (const [elId, key] of Object.entries(map)) {
+                    if (cfg[key] !== undefined) {
+                        const el = document.getElementById(elId);
+                        if (el) el.value = cfg[key];
+                    }
+                }
+            } catch (e) { }
+        }
+
+        // Sync worker names bidirectionally
+        function syncWorkersToInputs() {
+            const ids = ['w1', 'w2', 'w3', 'w4'];
+            ids.forEach((id, i) => {
+                if (trabajadoresData[i]) {
+                    document.getElementById(id).value = trabajadoresData[i].nombre;
+                }
+            });
+        }
+        function syncInputsToWorkers() {
+            const ids = ['w1', 'w2', 'w3', 'w4'];
+            ids.forEach((id, i) => {
+                const val = document.getElementById(id).value.trim();
+                if (val && trabajadoresData[i]) {
+                    trabajadoresData[i].nombre = val;
+                } else if (val && !trabajadoresData[i]) {
+                    trabajadoresData.push({ nombre: val, cedula: '', cargo: 'Islero', isla: 1, turno: ['A', 'B', 'C', 'D'][i % 4], descanso: 'Dom', tipo: 'empleado', salario: 1750905 });
+                }
+            });
+        }
+
+        const turnoColors = { A: '#FFF9C4', B: '#FFE0B2', C: '#BBDEFB', D: '#90CAF9' };
+        const turnoLabels = { A: 'Mañana 06-12', B: 'Tarde 12-18', C: 'Noche 18-00', D: 'Madrugada 00-06' };
+
+        function renderTrabajadores() {
+            syncInputsToWorkers();
+            const list = document.getElementById('trabList');
+            list.innerHTML = '';
+            document.getElementById('trabCount').textContent = `${trabajadoresData.length} trabajador${trabajadoresData.length !== 1 ? 'es' : ''}`;
+
+            const groups = [
+                { label: 'EMPLEADOS', color: 'var(--accent)', workers: trabajadoresData.filter(t => t.tipo === 'empleado') },
+                { label: 'PRESTADORES DE SERVICIO', color: 'var(--warning)', workers: trabajadoresData.filter(t => t.tipo === 'prestador') }
+            ];
+
+            groups.forEach(g => {
+                if (!g.workers.length) return;
+                const bar = document.createElement('div');
+                bar.className = 'trab-group-bar';
+                bar.innerHTML = `<div class="trab-group-accent" style="background:${g.color}"></div><span class="trab-group-label" style="color:${g.color}">${g.label}</span><span class="trab-group-count">${g.workers.length} persona(s)</span>`;
+                list.appendChild(bar);
+
+                g.workers.forEach(t => {
+                    const idx = trabajadoresData.indexOf(t);
+                    const card = document.createElement('div');
+                    card.className = 'trab-card';
+                    const initials = t.nombre.split(' ').map(s => s[0]).join('').substring(0, 2).toUpperCase();
+                    const avatarClr = turnoColors[t.turno] || '#FFF9C4';
+                    const islaClr = t.isla === 1 ? 'var(--info)' : 'var(--accent2)';
+                    const tipoLbl = t.tipo === 'empleado' ? 'Empleado' : 'Prestador';
+                    const tipoBg = t.tipo === 'empleado' ? 'var(--accent)' : 'var(--warning)';
+                    card.innerHTML =
+                        `<div class="trab-avatar" style="background:${avatarClr}">${initials}</div>` +
+                        `<div class="trab-info">` +
+                        `<div class="trab-name-row">` +
+                        `<span class="trab-name">${t.nombre}</span>` +
+                        `<span class="trab-badge" style="background:${islaClr}">I${t.isla}</span>` +
+                        `<span class="trab-badge" style="background:${tipoBg}">${tipoLbl}</span>` +
+                        `</div>` +
+                        `<div class="trab-detail">CC ${t.cedula || 'Sin registrar'}  ·  ${t.cargo}  ·  Salario: ${currency(t.salario)}</div>` +
+                        `<div class="trab-detail2">Turno: ${t.turno} – ${turnoLabels[t.turno] || t.turno}  ·  Desc: ${t.descanso}  ·  Hrs: 6h</div>` +
+                        `</div>` +
+                        `<div class="trab-actions">` +
+                        `<button class="trab-btn trab-btn-edit" data-idx="${idx}">Editar</button>` +
+                        `<button class="trab-btn trab-btn-del" data-idx="${idx}">Eliminar</button>` +
+                        `</div>`;
+                    list.appendChild(card);
+                });
+            });
+
+            // Bind buttons
+            list.querySelectorAll('.trab-btn-edit').forEach(b => b.addEventListener('click', () => openWorkerModal(parseInt(b.dataset.idx))));
+            list.querySelectorAll('.trab-btn-del').forEach(b => b.addEventListener('click', () => {
+                const i = parseInt(b.dataset.idx);
+                if (confirm(`¿Eliminar a ${trabajadoresData[i].nombre}?`)) {
+                    trabajadoresData.splice(i, 1);
+                    syncWorkersToInputs();
+                    renderTrabajadores();
+                    saveTrabajadores();
+                }
+            }));
+        }
+
+        // Modal
+        let editingIdx = -1;
+        function openWorkerModal(idx) {
+            editingIdx = typeof idx === 'number' ? idx : -1;
+            const m = document.getElementById('trabModal');
+            document.getElementById('trabModalTitle').textContent = editingIdx >= 0 ? 'Editar Trabajador' : 'Nuevo Trabajador';
+            if (editingIdx >= 0) {
+                const t = trabajadoresData[editingIdx];
+                document.getElementById('mNombre').value = t.nombre;
+                document.getElementById('mCedula').value = t.cedula;
+                document.getElementById('mCargo').value = t.cargo;
+                document.getElementById('mIsla').value = String(t.isla);
+                document.getElementById('mTurno').value = t.turno;
+                document.getElementById('mDescanso').value = t.descanso;
+                document.getElementById('mTipo').value = t.tipo;
+                document.getElementById('mSalario').value = t.salario;
+            } else {
+                document.getElementById('mNombre').value = '';
+                document.getElementById('mCedula').value = '';
+                document.getElementById('mCargo').value = 'Islero';
+                document.getElementById('mIsla').value = '1';
+                document.getElementById('mTurno').value = 'A';
+                document.getElementById('mDescanso').value = 'Dom';
+                document.getElementById('mTipo').value = 'empleado';
+                document.getElementById('mSalario').value = document.getElementById('salario').value || '1750905';
+            }
+            m.classList.add('open');
+        }
+        document.getElementById('btnAddWorker').addEventListener('click', () => openWorkerModal());
+        document.getElementById('btnCancelWorker').addEventListener('click', () => document.getElementById('trabModal').classList.remove('open'));
+        document.getElementById('trabModal').addEventListener('click', e => { if (e.target.id === 'trabModal') e.target.classList.remove('open'); });
+        document.getElementById('btnSaveWorker').addEventListener('click', () => {
+            const obj = {
+                nombre: document.getElementById('mNombre').value.trim(),
+                cedula: document.getElementById('mCedula').value.trim(),
+                cargo: document.getElementById('mCargo').value.trim() || 'Islero',
+                isla: parseInt(document.getElementById('mIsla').value),
+                turno: document.getElementById('mTurno').value,
+                descanso: document.getElementById('mDescanso').value,
+                tipo: document.getElementById('mTipo').value,
+                salario: parseFloat(document.getElementById('mSalario').value) || 1750905
+            };
+            if (!obj.nombre) { alert('El nombre es obligatorio'); return; }
+            if (editingIdx >= 0) {
+                trabajadoresData[editingIdx] = obj;
+            } else {
+                trabajadoresData.push(obj);
+            }
+            syncWorkersToInputs();
+            document.getElementById('trabModal').classList.remove('open');
+            renderTrabajadores();
+            saveTrabajadores();
+        });
+
+        // ══════════ FESTIVOS COLOMBIA 2026 ══════════
+        const FESTIVOS_COL = { 1: [1, 12], 2: [], 3: [23], 4: [2, 3], 5: [1, 18], 6: [8, 15, 29], 7: [20], 8: [7, 17], 9: [], 10: [12], 11: [2, 16], 12: [8, 25] };
+        const MESES_NOMBRE = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const DIAS_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+        // ══════════ UTILIDADES ══════════
+        const shifts = [
+            { name: '06:00-12:00', diurnas: 6, nocturnas: 0 },
+            { name: '12:00-18:00', diurnas: 6, nocturnas: 0 },
+            { name: '18:00-00:00', diurnas: 3, nocturnas: 3 },
+            { name: '00:00-06:00', diurnas: 0, nocturnas: 6 }
+        ];
+
+        function parseFestivos(str) {
+            if (!str) return new Set();
+            return new Set(str.split(',').map(s => s.trim()).filter(s => s !== '' && !isNaN(parseInt(s, 10))).map(s => parseInt(s, 10)));
+        }
+        function currency(n) { return n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }); }
+
+        function buildSchedule(year, month, workers, festivosSet) {
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const days = [];
+            for (let d = 1; d <= daysInMonth; d++) {
+                const date = new Date(year, month, d);
+                const dayIndex = d - 1;
+                const block = Math.floor(dayIndex / 2);
+                const rot = block % workers.length;
+                const isSunday = date.getDay() === 0;
+                const isHoliday = festivosSet.has(d);
+                const isDomFest = isSunday || isHoliday;
+                const quincena = d <= 15 ? 1 : 2;
+                const dayShifts = shifts.map((_, sIdx) => workers[(sIdx + rot) % workers.length]);
+                days.push({ date, d, isSunday, isHoliday, isDomFest, quincena, assignments: dayShifts });
+            }
+            return days;
+        }
+
+        function getConfigFromDom() {
+            return {
+                empresa: document.getElementById('cfgEmpresa').value || 'Estación Servicentro San Pedro',
+                nit: document.getElementById('cfgNIT').value || '3.047.352',
+                direccion: document.getElementById('cfgDireccion').value || 'Calle Principal #123, Ciudad',
+                cargo: document.getElementById('cfgCargo').value || 'Islero',
+                isla: document.getElementById('cfgIsla').value || '1',
+                pctPensEmpl: parseFloat(document.getElementById('cfgPensEmpl').value || '12'),
+                pctARL: parseFloat(document.getElementById('cfgARL').value || '6.96'),
+                pctCaja: parseFloat(document.getElementById('cfgCaja').value || '4'),
+                pctPrima: parseFloat(document.getElementById('cfgPrima').value || '8.33'),
+                pctCes: parseFloat(document.getElementById('cfgCes').value || '8.33'),
+                pctIntCes: parseFloat(document.getElementById('cfgIntCes').value || '12'),
+                pctVac: parseFloat(document.getElementById('cfgVac').value || '4.17')
+            };
+        }
+
+        function computePayroll(year, month, params, workers, festivosSet, compInputsFromDom) {
+            const schedule = buildSchedule(year, month, workers, festivosSet);
+            const salario = params.salario;
+            const auxilio = params.auxilio;
+            const horasMes = params.horasMes;
+            const recNoct = params.recNoct;
+            const recDom = params.recDom;
+            const saludPct = params.saludPct;
+            const pensionPct = params.pensionPct;
+            const valorHora = salario / horasMes;
+            const baseQuincena = salario / 2;
+            const saludQuincena = salario * saludPct / 2;
+            const pensionQuincena = salario * pensionPct / 2;
+            const salarioDiario = salario / 30;
+            const data = [];
+
+            for (const w of workers) {
+                for (const q of [1, 2]) {
+                    let diurnas = 0, nocturnas = 0, domDiurnas = 0, domNocturnas = 0;
+                    let domingosTrab = 0;
+                    const seenDom = new Set();
+                    for (const day of schedule) {
+                        if (day.quincena !== q) continue;
+                        const idx = day.assignments.indexOf(w);
+                        if (idx === -1) continue;
+                        const sh = shifts[idx];
+                        if (day.isDomFest) {
+                            domDiurnas += sh.diurnas; domNocturnas += sh.nocturnas;
+                            if (!seenDom.has(day.d)) { domingosTrab++; seenDom.add(day.d); }
+                        } else { diurnas += sh.diurnas; nocturnas += sh.nocturnas; }
+                    }
+                    const key = `${w}-${q}`;
+                    let compDom = compInputsFromDom && compInputsFromDom[key] != null ? compInputsFromDom[key] : domingosTrab;
+                    compDom = Math.max(0, Math.min(domingosTrab, compDom));
+                    const domingosSinComp = Math.max(0, domingosTrab - compDom);
+                    const recNocturnas = nocturnas * valorHora * recNoct;
+                    const recDomDiurnas = domDiurnas * valorHora * recDom;
+                    const recDomNocturnas = domNocturnas * valorHora * (recDom + recNoct);
+                    const totalRecargos = recNocturnas + recDomDiurnas + recDomNocturnas;
+                    const brutoSinTrans = baseQuincena + totalRecargos;
+                    const extraSinComp = salarioDiario * domingosSinComp;
+                    const netoSinTrans = brutoSinTrans - saludQuincena - pensionQuincena + extraSinComp;
+                    const auxQuincena = q === 2 ? auxilio : 0;
+                    const netoConTrans = netoSinTrans + auxQuincena;
+                    data.push({ trabajador: w, quincena: q, diurnas, nocturnas, domDiurnas, domNocturnas, domingosTrab, compDom, domingosSinComp, recNocturnas, recDomDiurnas, recDomNocturnas, totalRecargos, brutoSinTrans, extraSinComp, saludQuincena, pensionQuincena, netoSinTrans, auxQuincena, netoConTrans });
+                }
+            }
+            return { schedule, data, valorHora, baseQuincena, salarioDiario, salario, saludQuincena, pensionQuincena };
+        }
+
+        function readCompensatoriosFromDom() {
+            const inputs = document.querySelectorAll('.input-comp');
+            const map = {};
+            inputs.forEach(inp => { const key = inp.dataset.key; const val = parseInt(inp.value, 10); if (!isNaN(val)) map[key] = val; });
+            return map;
+        }
+
+        let lastResult = null, lastParams = null, lastWorkers = null, lastYear = null, lastMonth = null, lastFestivos = null, lastConfig = null;
+
+        // ══════════ RENDER TABLE ══════════
+        function renderTablaNomina(result) {
+            const thead = document.querySelector('#tablaNomina thead');
+            const tbody = document.querySelector('#tablaNomina tbody');
+            thead.innerHTML = ''; tbody.innerHTML = '';
+            if (!result || !result.data || result.data.length === 0) return;
+
+            const headerRow = document.createElement('tr');
+            const headers = ['Trabajador', 'Qna', 'H. Diurnas', 'H. Nocturnas', 'H. Dom Diur', 'H. Dom Noct', 'Dom. Trab', 'Dom. Comp', 'Dom. Sin Comp', 'Rec. Noct', 'Rec. Dom Diur', 'Rec. Dom Noct', 'Total Rec.', 'Bruto s/T', 'Extra Dom', 'Salud', 'Pensión', 'Neto s/T', 'Aux. Qna', 'Neto c/T', 'PDF'];
+            headers.forEach((h, idx) => {
+                const th = document.createElement('th');
+                th.textContent = h;
+                if (idx === 0) th.style.textAlign = 'left';
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            result.data.forEach(row => {
+                const tr = document.createElement('tr');
+                const td = (text, isLabel) => { const t = document.createElement('td'); t.textContent = text; if (isLabel) t.style.textAlign = 'left'; return t; };
+
+                tr.appendChild(td(row.trabajador, true));
+                tr.appendChild(td(row.quincena));
+                tr.appendChild(td(row.diurnas.toFixed(1)));
+                tr.appendChild(td(row.nocturnas.toFixed(1)));
+                tr.appendChild(td(row.domDiurnas.toFixed(1)));
+                tr.appendChild(td(row.domNocturnas.toFixed(1)));
+                tr.appendChild(td(row.domingosTrab));
+
+                const tdComp = document.createElement('td');
+                const inp = document.createElement('input');
+                inp.type = 'number'; inp.min = '0'; inp.max = String(row.domingosTrab);
+                inp.value = String(row.compDom); inp.className = 'small-input input-comp';
+                inp.dataset.key = `${row.trabajador}-${row.quincena}`;
+                tdComp.appendChild(inp); tr.appendChild(tdComp);
+
+                const tdDomSin = document.createElement('td');
+                tdDomSin.innerHTML = row.domingosSinComp === 0 ? `<span class="badge-ok">0</span>` : `<span class="badge-warn">${row.domingosSinComp}</span>`;
+                tr.appendChild(tdDomSin);
+
+                tr.appendChild(td(currency(row.recNocturnas)));
+                tr.appendChild(td(currency(row.recDomDiurnas)));
+                tr.appendChild(td(currency(row.recDomNocturnas)));
+                tr.appendChild(td(currency(row.totalRecargos)));
+                tr.appendChild(td(currency(row.brutoSinTrans)));
+                tr.appendChild(td(currency(row.extraSinComp)));
+                tr.appendChild(td(currency(row.saludQuincena)));
+                tr.appendChild(td(currency(row.pensionQuincena)));
+                tr.appendChild(td(currency(row.netoSinTrans)));
+                tr.appendChild(td(row.auxQuincena ? currency(row.auxQuincena) : '$ 0'));
+                tr.appendChild(td(currency(row.netoConTrans)));
+
+                const tdPdf = document.createElement('td');
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-ghost'; btn.textContent = 'PDF'; btn.style.fontSize = '11px'; btn.style.padding = '4px 12px';
+                btn.addEventListener('click', () => generarPdfComprobante(row.trabajador, row.quincena));
+                tdPdf.appendChild(btn); tr.appendChild(tdPdf);
+                tbody.appendChild(tr);
+            });
+
+            tbody.querySelectorAll('.input-comp').forEach(inp => {
+                inp.addEventListener('change', () => {
+                    const compMap = readCompensatoriosFromDom();
+                    const newRes = computePayroll(lastYear, lastMonth, lastParams, lastWorkers, lastFestivos, compMap);
+                    lastResult = newRes;
+                    renderTablaNomina(newRes);
+                });
+            });
+        }
+
+        // ══════════ DASHBOARD ══════════
+        function refreshDashboard() {
+            const month = parseInt(document.getElementById('month').value, 10);
+            const year = parseInt(document.getElementById('year').value, 10);
+            const salario = parseFloat(document.getElementById('salario').value || '1750905');
+            const horasMes = parseFloat(document.getElementById('horasMes').value || '210');
+            const valorHora = salario / horasMes;
+            const workers = [
+                document.getElementById('w1').value || 'Trab1',
+                document.getElementById('w2').value || 'Trab2',
+                document.getElementById('w3').value || 'Trab3',
+                document.getElementById('w4').value || 'Trab4'
+            ];
+
+            // Period display
+            document.getElementById('dashPeriod').textContent = `${MESES_NOMBRE[month]} ${year}`;
+
+            // Brand bar
+            document.getElementById('brandSmlmv').textContent = `SMLMV ${currency(salario)}`;
+            document.getElementById('brandVhora').textContent = `V.Hora ${currency(valorHora)}`;
+
+            // KPIs
+            document.getElementById('kpiWorkers').textContent = workers.length;
+            document.getElementById('kpiHora').textContent = currency(valorHora);
+            document.getElementById('kpiBase').textContent = currency(salario / 2);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let domCount = 0;
+            for (let d = 1; d <= daysInMonth; d++) { if (new Date(year, month, d).getDay() === 0) domCount++; }
+            const festivos = FESTIVOS_COL[month + 1] || [];
+            document.getElementById('kpiMes').textContent = `${MESES_NOMBRE[month]}`;
+            document.getElementById('kpiDias').textContent = `${daysInMonth} días · ${domCount} dom · ${festivos.length} fest`;
+
+            // Worker list
+            const wl = document.getElementById('workerList');
+            wl.innerHTML = '<div class="worker-row worker-row-header"><span>Nombre</span><span>Tipo</span><span>Isla</span><span>Turno</span><span>Desc</span></div>';
+            const turnoNames = ['A: 06-12', 'B: 12-18', 'C: 18-00', 'D: 00-06'];
+            workers.forEach((w, i) => {
+                const row = document.createElement('div');
+                row.className = 'worker-row';
+                row.innerHTML = `<span>${w}</span><span class="worker-tipo emp">Empleado</span><span style="color:var(--accent2)">1</span><span style="color:var(--text2)">${turnoNames[i % 4]}</span><span style="color:var(--text3)">Rot.</span>`;
+                wl.appendChild(row);
+            });
+
+            // Turnos list
+            const tl = document.getElementById('turnosList');
+            tl.innerHTML = '';
+            const turnoData = [
+                { key: 'A', lbl: 'Mañana 06-12', clr: '#FFF9C4', hrs: 6 },
+                { key: 'B', lbl: 'Tarde 12-18', clr: '#FFE0B2', hrs: 6 },
+                { key: 'C', lbl: 'Noche 18-00', clr: '#BBDEFB', hrs: 6 },
+                { key: 'D', lbl: 'Madrugada 00-06', clr: '#90CAF9', hrs: 6 }
+            ];
+            turnoData.forEach(t => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;';
+                row.innerHTML = `<span style="width:10px;height:10px;border-radius:50%;background:${t.clr};flex-shrink:0;"></span><strong style="color:var(--text);font-size:12px;width:18px;">${t.key}</strong><span style="font-size:11px;color:var(--text2);flex:1;">${t.lbl}</span><span style="font-size:11px;font-weight:700;color:var(--accent);">${t.hrs}h I1</span>`;
+                tl.appendChild(row);
+            });
+
+            // ── Horario de Hoy ──
+            (function renderTodaySchedule() {
+                const today = new Date();
+                const td = today.getDate();
+                const tm = today.getMonth();
+                const ty = today.getFullYear();
+                const dow = today.getDay();
+                const DIAS_FULL_L = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                const festivosHoy = FESTIVOS_COL[tm + 1] || [];
+                const festivosSetHoy = new Set(festivosHoy);
+                const isDom = dow === 0;
+                const isFest = festivosSetHoy.has(td);
+
+                document.getElementById('dashTodayDate').textContent =
+                    `${DIAS_FULL_L[dow]} ${td} de ${MESES_NOMBRE[tm]} ${ty}`;
+
+                const badge = document.getElementById('dashTodayBadge');
+                badge.className = 'dash-today-badge';
+                if (isDom) { badge.classList.add('dom'); badge.textContent = 'DOMINGO'; }
+                else if (isFest) { badge.classList.add('fest'); badge.textContent = 'FESTIVO'; }
+                else { badge.classList.add('normal'); badge.textContent = 'Día Normal'; }
+
+                const schedHoy = buildSchedule(ty, tm, workers, festivosSetHoy);
+                const dayData = schedHoy[td - 1];
+                const turnoInfo = [
+                    { key: 'A', lbl: '06:00 – 12:00', clr: '#FFF9C4' },
+                    { key: 'B', lbl: '12:00 – 18:00', clr: '#FFE0B2' },
+                    { key: 'C', lbl: '18:00 – 00:00', clr: '#BBDEFB' },
+                    { key: 'D', lbl: '00:00 – 06:00', clr: '#90CAF9' }
+                ];
+                const h = today.getHours();
+                let currentShift = -1;
+                if (h >= 6 && h < 12) currentShift = 0;
+                else if (h >= 12 && h < 18) currentShift = 1;
+                else if (h >= 18) currentShift = 2;
+                else currentShift = 3;
+
+                const grid = document.getElementById('dashTodayGrid');
+                grid.innerHTML = '';
+                if (dayData) {
+                    turnoInfo.forEach((t, i) => {
+                        const card = document.createElement('div');
+                        card.className = 'dash-today-card';
+                        if (i === currentShift && tm === today.getMonth() && ty === today.getFullYear() && td === today.getDate()) card.classList.add('dash-today-now');
+                        const workerName = dayData.assignments[i] || '—';
+                        card.innerHTML =
+                            `<div class="dash-today-top" style="background:${t.clr}">` +
+                            `<div class="dash-today-turno">Turno ${t.key}</div>` +
+                            `<div class="dash-today-hora">${t.lbl}</div>` +
+                            `</div>` +
+                            `<div class="dash-today-bottom">` +
+                            `<div class="dash-today-worker">${workerName}</div>` +
+                            `<div class="dash-today-status">${i === currentShift ? 'En servicio' : 'Programado'}</div>` +
+                            `</div>`;
+                        grid.appendChild(card);
+                    });
+                }
+            })();
+
+            // Festivos
+            document.getElementById('festivosTitle').textContent = `Festivos ${MESES_NOMBRE[month]}`;
+            const fc = document.getElementById('festivosContent');
+            fc.innerHTML = '';
+            if (festivos.length) {
+                festivos.forEach(d => {
+                    const dt = new Date(year, month, d);
+                    const dayName = DIAS_FULL[dt.getDay()];
+                    const div = document.createElement('div');
+                    div.className = 'festivo-item';
+                    div.textContent = `${d} ${MESES_NOMBRE[month]} — ${dayName}`;
+                    fc.appendChild(div);
+                });
+            } else {
+                const div = document.createElement('div');
+                div.className = 'festivo-item'; div.style.color = 'var(--text3)';
+                div.textContent = 'Sin festivos este mes';
+                fc.appendChild(div);
+            }
+        }
+
+        // ══════════ HORARIO ══════════
+        const DIAS_SEM = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        const turnoMeta = [
+            { key: 'A', lbl: '06:00–12:00', clr: '#FFF9C4', hrs: 6 },
+            { key: 'B', lbl: '12:00–18:00', clr: '#FFE0B2', hrs: 6 },
+            { key: 'C', lbl: '18:00–00:00', clr: '#BBDEFB', hrs: 6 },
+            { key: 'D', lbl: '00:00–06:00', clr: '#90CAF9', hrs: 6 }
+        ];
+
+        function renderHorario() {
+            const month = parseInt(document.getElementById('month').value, 10);
+            const year = parseInt(document.getElementById('year').value, 10);
+            const workers = [
+                document.getElementById('w1').value || 'Trab1',
+                document.getElementById('w2').value || 'Trab2',
+                document.getElementById('w3').value || 'Trab3',
+                document.getElementById('w4').value || 'Trab4'
+            ];
+            const festivos = FESTIVOS_COL[month + 1] || [];
+            const festivosSet = new Set(festivos);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const empresa = document.getElementById('cfgEmpresa').value || 'Estación';
+
+            document.getElementById('horPeriod').textContent = `${MESES_NOMBRE[month]} ${year}`;
+
+            // Legend
+            const leg = document.getElementById('horLegend');
+            leg.innerHTML = '';
+            turnoMeta.forEach(t => {
+                leg.innerHTML += `<div class="hor-legend-item"><div class="hor-legend-dot" style="background:${t.clr}"></div>${t.key}: ${t.lbl}</div>`;
+            });
+            leg.innerHTML += `<span class="hor-legend-sep">|</span><span class="hor-dom-badge" style="background:#3d1f1f;color:#ff5252;">DOM</span><span class="hor-dom-badge" style="background:#3d2e1a;color:#ff9800;">FEST</span>`;
+
+            // Build schedule
+            const schedule = buildSchedule(year, month, workers, festivosSet);
+
+            // Table
+            const thead = document.querySelector('#horTable thead');
+            const tbody = document.querySelector('#horTable tbody');
+            thead.innerHTML = ''; tbody.innerHTML = '';
+
+            // Header
+            const htr = document.createElement('tr');
+            htr.innerHTML = '<th>FECHA</th>';
+            turnoMeta.forEach(t => { htr.innerHTML += `<th>${t.lbl}</th>`; });
+            thead.appendChild(htr);
+
+            // Per-worker counters
+            const workerCounts = {};
+            workers.forEach(w => { workerCounts[w] = { A: 0, B: 0, C: 0, D: 0 }; });
+
+            // Rows
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dt = new Date(year, month, d);
+                const dow = dt.getDay(); // 0=dom
+                const dowIdx = (dow + 6) % 7; // 0=lun
+                const diaSem = DIAS_SEM[dowIdx];
+                const isDom = dow === 0;
+                const isFest = festivosSet.has(d);
+
+                const tr = document.createElement('tr');
+                if (isDom) tr.className = 'row-dom';
+                else if (isFest) tr.className = 'row-fest';
+                else if (d % 2 === 0) tr.className = 'row-even';
+                else tr.className = 'row-odd';
+
+                let fechaTxt = `${d} ${diaSem}`;
+                if (isDom) fechaTxt += ` (Dom)`;
+                else if (isFest) fechaTxt += ` (Fest)`;
+                const tdFecha = document.createElement('td');
+                tdFecha.textContent = fechaTxt;
+                tr.appendChild(tdFecha);
+
+                const dayData = schedule[d - 1];
+                turnoMeta.forEach((t, ti) => {
+                    const workerInShift = dayData.assignments[ti];
+                    const td = document.createElement('td');
+                    if (workerInShift) {
+                        td.innerHTML = `<span class="hor-cell" style="background:${t.clr}">${workerInShift}</span>`;
+                        // Count
+                        if (workerCounts[workerInShift]) workerCounts[workerInShift][t.key]++;
+                    } else {
+                        td.innerHTML = `<span class="hor-cell-empty">—</span>`;
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            }
+
+            // Resumen
+            const res = document.getElementById('horResumen');
+            res.innerHTML = '';
+            workers.forEach(w => {
+                const counts = workerCounts[w];
+                let totalHrs = 0;
+                let badges = '';
+                turnoMeta.forEach(t => {
+                    const cnt = counts[t.key] || 0;
+                    if (cnt > 0) {
+                        badges += `<span class="hor-resumen-badge" style="background:${t.clr}">${t.key}: ${cnt}d</span>`;
+                        totalHrs += cnt * t.hrs;
+                    }
+                });
+                res.innerHTML += `<div class="hor-resumen-row"><span class="hor-resumen-name">${w}</span>${badges}<span class="hor-resumen-total">Total: ${totalHrs}h</span></div>`;
+            });
+
+            // Festivos
+            const fbar = document.getElementById('horFestivos');
+            fbar.innerHTML = '';
+            if (festivos.length) {
+                fbar.innerHTML = `<span class="hor-festivos-title">Festivos ${MESES_NOMBRE[month]} ${year}:</span>`;
+                festivos.forEach(d => {
+                    const dt = new Date(year, month, d);
+                    const dayName = DIAS_FULL[dt.getDay()];
+                    fbar.innerHTML += `<span class="hor-festivos-item">${d} (${dayName})</span>`;
+                });
+            }
+        }
+
+        // Horario nav
+        document.getElementById('horPrev').addEventListener('click', () => {
+            const mSel = document.getElementById('month');
+            const ySel = document.getElementById('year');
+            let m = parseInt(mSel.value, 10);
+            let y = parseInt(ySel.value, 10);
+            if (m === 0) { m = 11; y--; } else { m--; }
+            mSel.value = String(m); ySel.value = String(y);
+            renderHorario();
+        });
+        document.getElementById('horNext').addEventListener('click', () => {
+            const mSel = document.getElementById('month');
+            const ySel = document.getElementById('year');
+            let m = parseInt(mSel.value, 10);
+            let y = parseInt(ySel.value, 10);
+            if (m === 11) { m = 0; y++; } else { m++; }
+            mSel.value = String(m); ySel.value = String(y);
+            renderHorario();
+        });
+
+        // ══════════ BTN CALCULAR ══════════
+        document.getElementById('btnCalcular').addEventListener('click', () => {
+            const status = document.getElementById('status');
+            const cfg = getConfigFromDom(); lastConfig = cfg;
+            document.getElementById('brandSub').textContent = cfg.empresa;
+            status.textContent = 'Generando…';
+
+            const year = parseInt(document.getElementById('year').value, 10);
+            const month = parseInt(document.getElementById('month').value, 10);
+            const workers = [
+                document.getElementById('w1').value || 'Trab1',
+                document.getElementById('w2').value || 'Trab2',
+                document.getElementById('w3').value || 'Trab3',
+                document.getElementById('w4').value || 'Trab4'
+            ];
+            const festivos = parseFestivos(document.getElementById('festivos').value);
+            const params = {
+                salario: parseFloat(document.getElementById('salario').value || '0'),
+                auxilio: parseFloat(document.getElementById('auxilio').value || '0'),
+                horasMes: parseFloat(document.getElementById('horasMes').value || '210'),
+                recNoct: parseFloat(document.getElementById('recNoct').value || '0.35'),
+                recDom: parseFloat(document.getElementById('recDom').value || '0.8'),
+                saludPct: parseFloat(document.getElementById('saludPct').value || '0.04'),
+                pensionPct: parseFloat(document.getElementById('pensionPct').value || '0.04')
+            };
+            const result = computePayroll(year, month, params, workers, festivos, null);
+            lastResult = result; lastParams = params; lastWorkers = workers; lastYear = year; lastMonth = month; lastFestivos = festivos;
+            renderTablaNomina(result);
+            status.textContent = 'Listo ✓';
+            setTimeout(() => { status.textContent = ''; }, 3000);
+        });
+
+        // ══════════ PDF TODOS ══════════
+        document.getElementById('btnPdfTodos').addEventListener('click', () => {
+            if (!lastResult) return;
+            for (const w of lastWorkers) { for (const q of [1, 2]) generarPdfComprobante(w, q); }
+        });
+
+        // ══════════ GENERAR PDF ══════════
+        function generarPdfComprobante(trabajador, quincena) {
+            if (!lastResult) return;
+            if (!window.jspdf || !window.jspdf.jsPDF) { alert('jsPDF no se cargó.'); return; }
+            window.jsPDF = window.jspdf.jsPDF;
+            const doc = new window.jsPDF('p', 'pt', 'a4');
+            const row = lastResult.data.find(r => r.trabajador === trabajador && r.quincena === quincena);
+            if (!row) return;
+            const cfg = lastConfig || getConfigFromDom();
+            const year = lastYear;
+            const monthName = new Date(year, lastMonth, 1).toLocaleString('es-CO', { month: 'long' });
+            const periodo = quincena === 1 ? `1ra QUINCENA (Días 1-15)` : `2da QUINCENA (Días 16-${new Date(year, lastMonth + 1, 0).getDate()})`;
+            const margenX = 40; let y = 40;
+
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+            doc.text(cfg.empresa, margenX, y); y += 14;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+            doc.text(`NIT: ${cfg.nit} | ${cfg.direccion}`, margenX, y); y += 20;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+            doc.text(`COMPROBANTE DE NÓMINA - ${monthName.toUpperCase()} ${year}`, margenX, y); y += 14;
+            doc.setFontSize(11); doc.text(periodo, margenX, y); y += 18;
+
+            const valorHora = lastParams.salario / lastParams.horasMes;
+            const infoLeft = [`Nombre: ${trabajador}`, `Cargo: ${cfg.cargo}`, `Isla: ${cfg.isla}`, `Salario: ${currency(lastParams.salario)}`];
+            const infoRight = [`Cédula: ${trabajador.toUpperCase()}01`, `Tipo: Empleado`, `Valor Hora: ${currency(valorHora)}`, `Hrs estándar: 6h/turno`];
+            doc.setFontSize(9);
+            infoLeft.forEach((t, i) => doc.text(t, margenX, y + i * 12));
+            infoRight.forEach((t, i) => doc.text(t, 320, y + i * 12)); y += 60;
+
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+            doc.text('DETALLE DE TURNOS Y HORAS', margenX, y); y += 6;
+
+            const bodyTurnos = []; const schedule = lastResult.schedule;
+            const domingosTrab = [];
+            schedule.forEach(day => { if (day.quincena !== quincena) return; const idx = day.assignments.indexOf(trabajador); if (idx === -1) return; if (day.isDomFest) domingosTrab.push(day); });
+            const compMax = row.compDom;
+            const compDays = new Set(domingosTrab.slice(0, compMax).map(d => d.d));
+
+            for (const day of schedule) {
+                if (day.quincena !== quincena) continue;
+                const idx = day.assignments.indexOf(trabajador); if (idx === -1) continue;
+                const sh = shifts[idx];
+                const weekdayName = day.date.toLocaleString('es-CO', { weekday: 'short' });
+                let tipo = 'Ordinario'; let hrsOrd = 0, rNoct = 0, dDiur = 0, dNoct = 0;
+                if (day.isDomFest) {
+                    const esComp = compDays.has(day.d);
+                    tipo = esComp ? 'Domingo (Comp)' : 'Domingo s/Comp';
+                    if (esComp) { hrsOrd = sh.diurnas + sh.nocturnas; rNoct = sh.nocturnas; }
+                    else { dDiur = sh.diurnas; dNoct = sh.nocturnas; }
+                } else { hrsOrd = sh.diurnas + sh.nocturnas; rNoct = sh.nocturnas; }
+                bodyTurnos.push([day.d, weekdayName, tipo, sh.name, 6, hrsOrd, rNoct, dDiur, dNoct]);
+            }
+            const totalOrd = bodyTurnos.reduce((s, r) => s + r[5], 0);
+            const totalRNoct = bodyTurnos.reduce((s, r) => s + r[6], 0);
+            const totalDDiur = bodyTurnos.reduce((s, r) => s + r[7], 0);
+            const totalDNoct = bodyTurnos.reduce((s, r) => s + r[8], 0);
+            const totalHrs = bodyTurnos.length * 6;
+            bodyTurnos.push(['TOTAL', '', '', '', totalHrs, totalOrd, totalRNoct, totalDDiur, totalDNoct]);
+
+            doc.autoTable({ startY: y, head: [['Día', 'Sem', 'Tipo', 'Turno', 'Hrs', 'Ord', 'R.Noct', 'D.Diur', 'D.Noct']], body: bodyTurnos, styles: { fontSize: 8 }, headStyles: { fillColor: [13, 27, 42] }, margin: { left: margenX, right: 40 } });
+            let afterTableY = doc.lastAutoTable.finalY + 18;
+
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+            doc.text('DEVENGADOS', margenX, afterTableY); afterTableY += 4;
+            const devBody = [];
+            devBody.push(['Sueldo Básico Q' + quincena, '', '', '', currency(lastResult.baseQuincena)]);
+            devBody.push(['Auxilio Transporte', '', '', quincena === 2 ? '(Q2)' : '(Q1)', quincena === 2 ? currency(lastParams.auxilio) : '$ 0']);
+            devBody.push(['Rec. Nocturno', row.nocturnas.toFixed(1), currency(valorHora), `+${(lastParams.recNoct * 100).toFixed(0)}%`, currency(row.recNocturnas)]);
+            devBody.push(['Rec. Dom./Fest. Diurno', row.domDiurnas.toFixed(1), currency(valorHora), `+${(lastParams.recDom * 100).toFixed(0)}%`, currency(row.recDomDiurnas)]);
+            devBody.push(['Rec. Dom./Fest. Noct.', row.domNocturnas.toFixed(1), currency(valorHora), `+${((lastParams.recDom + lastParams.recNoct) * 100).toFixed(0)}%`, currency(row.recDomNocturnas)]);
+            if (row.domingosSinComp > 0) devBody.push([`Días extra por ${row.domingosSinComp} dom. sin comp.`, '', '', '', currency(row.extraSinComp)]);
+            devBody.push(['TOTAL DEVENGADO', '', '', '', currency(row.brutoSinTrans + row.extraSinComp + row.auxQuincena)]);
+            doc.autoTable({ startY: afterTableY, head: [['Concepto', 'Hrs', 'Vlr Hora', 'Tasa', 'Subtotal']], body: devBody, styles: { fontSize: 8 }, headStyles: { fillColor: [0, 170, 136] }, margin: { left: margenX, right: 40 } });
+            afterTableY = doc.lastAutoTable.finalY + 14;
+
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+            doc.text('DEDUCCIONES', margenX, afterTableY); afterTableY += 4;
+            const baseDedu = row.brutoSinTrans + row.extraSinComp;
+            const dedBody = [
+                ['Salud', currency(baseDedu), (lastParams.saludPct * 100).toFixed(1) + '%', currency(row.saludQuincena)],
+                ['Pensión', currency(baseDedu), (lastParams.pensionPct * 100).toFixed(1) + '%', currency(row.pensionQuincena)],
+                ['TOTAL DEDUCCIONES', '', '', currency(row.saludQuincena + row.pensionQuincena)]
+            ];
+            doc.autoTable({ startY: afterTableY, head: [['Concepto', 'Base Quincenal', '%', 'Valor']], body: dedBody, styles: { fontSize: 8 }, headStyles: { fillColor: [183, 28, 28] }, margin: { left: margenX, right: 40 } });
+            afterTableY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(8); doc.text('Base = Sueldo/2 + Recargos + Días extra (sin Auxilio de Transporte).', margenX, afterTableY);
+            afterTableY += 14;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+            doc.text(`NETO A PAGAR Q${quincena}: ${currency(row.netoConTrans)}`, margenX, afterTableY);
+
+            doc.addPage(); let y2 = 40;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+            doc.text('APORTES PATRONALES (Quincenal)', margenX, y2); y2 += 6;
+            const pctPensEmpl = (cfg.pctPensEmpl || 12) / 100;
+            const pctARL = (cfg.pctARL || 6.96) / 100;
+            const pctCaja = (cfg.pctCaja || 4) / 100;
+            const aportesBody = [
+                ['Pensión Empl.', currency(baseDedu), (pctPensEmpl * 100).toFixed(2) + '%', currency(baseDedu * pctPensEmpl)],
+                ['ARL', currency(baseDedu), (pctARL * 100).toFixed(2) + '%', currency(baseDedu * pctARL)],
+                ['Caja Comp.', currency(baseDedu), (pctCaja * 100).toFixed(2) + '%', currency(baseDedu * pctCaja)]
+            ];
+            const totalAportes = baseDedu * (pctPensEmpl + pctARL + pctCaja);
+            aportesBody.push(['TOTAL', '', '', currency(totalAportes)]);
+            doc.autoTable({ startY: y2, head: [['Concepto', 'Base Q.', '%', 'Quincenal']], body: aportesBody, styles: { fontSize: 8 }, headStyles: { fillColor: [55, 71, 79] }, margin: { left: margenX, right: 40 } });
+
+            let afterY2 = doc.lastAutoTable.finalY + 14;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+            doc.text('PROVISIONES (Quincenal)', margenX, afterY2); afterY2 += 6;
+            const pctPrima = (cfg.pctPrima || 8.33) / 100;
+            const pctCes = (cfg.pctCes || 8.33) / 100;
+            const pctIntCes = (cfg.pctIntCes || 12) / 100;
+            const pctVac = (cfg.pctVac || 4.17) / 100;
+            const provPrima = baseDedu * pctPrima; const provCes = baseDedu * pctCes;
+            const provIntCes = provCes * pctIntCes; const provVac = baseDedu * pctVac;
+            const totalProv = provPrima + provCes + provIntCes + provVac;
+            const provBody = [
+                ['Prima', (pctPrima * 100).toFixed(2) + '%', currency(provPrima)],
+                ['Cesantías', (pctCes * 100).toFixed(2) + '%', currency(provCes)],
+                ['Int. Cesantías', (pctIntCes * 100).toFixed(0) + '%', currency(provIntCes)],
+                ['Vacaciones', (pctVac * 100).toFixed(2) + '%', currency(provVac)],
+                ['TOTAL', '', currency(totalProv)]
+            ];
+            doc.autoTable({ startY: afterY2, head: [['Concepto', '%', 'Quincenal']], body: provBody, styles: { fontSize: 8 }, headStyles: { fillColor: [74, 20, 140] }, margin: { left: margenX, right: 40 } });
+
+            const costoEmpresa = row.netoConTrans + totalAportes + totalProv;
+            let afterY3 = doc.lastAutoTable.finalY + 18;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+            doc.text(`COSTO EMPRESA Q${quincena}: ${currency(costoEmpresa)}`, margenX, afterY3); afterY3 += 40;
+
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+            doc.text('______________________________', margenX, afterY3);
+            doc.text('______________________________', 320, afterY3); afterY3 += 12;
+            doc.text('Firma Empleador', margenX, afterY3);
+            doc.text('Firma Trabajador', 320, afterY3); afterY3 += 12;
+            doc.text(cfg.empresa, margenX, afterY3);
+            doc.text(trabajador, 320, afterY3); afterY3 += 12;
+            doc.text(`NIT: ${cfg.nit}`, margenX, afterY3);
+            const trabObj = trabajadoresData.find(t => t.nombre === trabajador);
+            const ccTxt = trabObj && trabObj.cedula ? `C.C. ${trabObj.cedula}` : `C.C. ${trabajador}`;
+            doc.text(ccTxt, 320, afterY3);
+            const genStr = new Date().toLocaleString('es-CO');
+            doc.setFontSize(7);
+            doc.text(`Generado: ${genStr} | ${monthName} ${year} Q${quincena} | SMLMV ${currency(lastParams.salario)}`, margenX, afterY3 + 18);
+
+            const fileName = `Nomina_${trabajador}_Q${quincena}_${monthName}_${year}.pdf`;
+            doc.save(fileName);
+        }
+
+        // ══════════ INIT ══════════
+        window.addEventListener('DOMContentLoaded', () => {
+            // Cargar datos locales primero (instantáneo)
+            loadConfig();
+            syncWorkersToInputs();
+            document.getElementById('footerDate').textContent = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+            refreshDashboard();
+
+            // Luego cargar de Firebase (puede tardar un momento)
+            loadFromFirebase();
+
+            // Auto-save config on any input change inside config page
+            document.getElementById('pg-config').addEventListener('input', () => {
+                syncInputsToWorkers();
+                saveTrabajadores();
+                saveConfig();
+            });
+        });
+    </script>
+</body>
+
+</html>
