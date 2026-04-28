@@ -1391,10 +1391,10 @@
                     </div>
                     <div class="modal-row">
                         <div class="modal-field"><label>Turno por defecto</label><select id="mTurno">
-                                <option value="A">A – Mañana 06-12</option>
-                                <option value="B">B – Tarde 12-18</option>
-                                <option value="C">C – Noche 18-00</option>
-                                <option value="D">D – Madrugada 00-06</option>
+                                <option value="A">A – Madrugada 12am-6am</option>
+                                <option value="B">B – Mañana 6am-12pm</option>
+                                <option value="C">C – Tarde 12pm-6pm</option>
+                                <option value="D">D – Noche 6pm-12pm</option>
                             </select></div>
                         <div class="modal-field"><label>Día de descanso</label><select id="mDescanso">
                                 <option>Dom</option>
@@ -1434,16 +1434,16 @@
 
                 <div class="turno-pills">
                     <div class="turno-pill">
-                        <div class="turno-dot" style="background:#FFF9C4"></div>06:00–12:00
+                        <div class="turno-dot" style="background:#90CAF9"></div>A: 00:00–06:00
                     </div>
                     <div class="turno-pill">
-                        <div class="turno-dot" style="background:#FFE0B2"></div>12:00–18:00
+                        <div class="turno-dot" style="background:#FFF9C4"></div>B: 06:00–12:00
                     </div>
                     <div class="turno-pill">
-                        <div class="turno-dot" style="background:#BBDEFB"></div>18:00–00:00 (3D/3N)
+                        <div class="turno-dot" style="background:#FFE0B2"></div>C: 12:00–18:00
                     </div>
                     <div class="turno-pill">
-                        <div class="turno-dot" style="background:#90CAF9"></div>00:00–06:00
+                        <div class="turno-dot" style="background:#BBDEFB"></div>D: 18:00–00:00 (3D/3N)
                     </div>
                 </div>
 
@@ -1726,8 +1726,8 @@
             });
         }
 
-        const turnoColors = { A: '#FFF9C4', B: '#FFE0B2', C: '#BBDEFB', D: '#90CAF9' };
-        const turnoLabels = { A: 'Mañana 06-12', B: 'Tarde 12-18', C: 'Noche 18-00', D: 'Madrugada 00-06' };
+        const turnoColors = { A: '#90CAF9', B: '#FFF9C4', C: '#FFE0B2', D: '#BBDEFB' };
+        const turnoLabels = { A: 'Madrugada 12am-6am', B: 'Mañana 6am-12pm', C: 'Tarde 12pm-6pm', D: 'Noche 6pm-12pm' };
 
         function renderTrabajadores() {
             syncInputsToWorkers();
@@ -1849,10 +1849,10 @@
 
         // ══════════ UTILIDADES ══════════
         const shifts = [
+            { name: '00:00-06:00', diurnas: 0, nocturnas: 6 },
             { name: '06:00-12:00', diurnas: 6, nocturnas: 0 },
             { name: '12:00-18:00', diurnas: 6, nocturnas: 0 },
-            { name: '18:00-00:00', diurnas: 3, nocturnas: 3 },
-            { name: '00:00-06:00', diurnas: 0, nocturnas: 6 }
+            { name: '18:00-00:00', diurnas: 3, nocturnas: 3 }
         ];
 
         function parseFestivos(str) {
@@ -1864,10 +1864,14 @@
         function buildSchedule(year, month, workers, festivosSet) {
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const days = [];
-            // Same rotation model as Python app:
-            // Anchor: 16-Mar-2026 where A,B,C,D = workers[0..3]
-            const rotationAnchor = 74; // days since 2026-01-01
+            // Anchor: 16-Abr-2026 = par 0 donde A=Huber, B=Fabian, C=Kevin, D=Jhon
+            // workers = [Jhon(0), Fabian(1), Kevin(2), Huber(3)]
+            const rotationAnchor = 105; // días desde 2026-01-01 (16 de Abril)
             const rotationBaseDate = new Date(2026, 0, 1);
+            // Orden inicial: qué índice de worker ocupa cada turno en el par 0
+            // Turno A(sIdx=0)→workers[3]=Huber, B(1)→workers[1]=Fabian,
+            // C(2)→workers[2]=Kevin, D(3)→workers[0]=Jhon
+            const rotOrder = [3, 1, 2, 0];
             for (let d = 1; d <= daysInMonth; d++) {
                 const date = new Date(year, month, d);
                 const globalDay = Math.floor((date - rotationBaseDate) / (1000 * 60 * 60 * 24));
@@ -1877,7 +1881,8 @@
                 const isDomFest = isSunday || isHoliday;
                 const quincena = d <= 15 ? 1 : 2;
                 const dayShifts = shifts.map((_, sIdx) => {
-                    const workerIdx = ((sIdx + pairIndex) % workers.length + workers.length) % workers.length;
+                    const rotIdx = ((sIdx + pairIndex) % workers.length + workers.length) % workers.length;
+                    const workerIdx = rotOrder[rotIdx];
                     return workers[workerIdx];
                 });
                 days.push({ date, d, isSunday, isHoliday, isDomFest, quincena, assignments: dayShifts });
@@ -2066,7 +2071,7 @@
             // Worker list
             const wl = document.getElementById('workerList');
             wl.innerHTML = '<div class="worker-row worker-row-header"><span>Nombre</span><span>Tipo</span><span>Isla</span><span>Turno</span><span>Desc</span></div>';
-            const turnoNames = ['A: 06-12', 'B: 12-18', 'C: 18-00', 'D: 00-06'];
+            const turnoNames = ['A: 12am-6am', 'B: 6am-12pm', 'C: 12pm-6pm', 'D: 6pm-12pm'];
             workers.forEach((w, i) => {
                 const row = document.createElement('div');
                 row.className = 'worker-row';
@@ -2078,10 +2083,10 @@
             const tl = document.getElementById('turnosList');
             tl.innerHTML = '';
             const turnoData = [
-                { key: 'A', lbl: 'Mañana 06-12', clr: '#FFF9C4', hrs: 6 },
-                { key: 'B', lbl: 'Tarde 12-18', clr: '#FFE0B2', hrs: 6 },
-                { key: 'C', lbl: 'Noche 18-00', clr: '#BBDEFB', hrs: 6 },
-                { key: 'D', lbl: 'Madrugada 00-06', clr: '#90CAF9', hrs: 6 }
+                { key: 'A', lbl: 'Madrugada 12am-6am', clr: '#90CAF9', hrs: 6 },
+                { key: 'B', lbl: 'Mañana 6am-12pm', clr: '#FFF9C4', hrs: 6 },
+                { key: 'C', lbl: 'Tarde 12pm-6pm', clr: '#FFE0B2', hrs: 6 },
+                { key: 'D', lbl: 'Noche 6pm-12pm', clr: '#BBDEFB', hrs: 6 }
             ];
             turnoData.forEach(t => {
                 const row = document.createElement('div');
@@ -2115,16 +2120,16 @@
                 const schedHoy = buildSchedule(ty, tm, workers, festivosSetHoy);
                 const dayData = schedHoy[td - 1];
                 const turnoInfo = [
-                    { key: 'A', lbl: '06:00 – 12:00', clr: '#FFF9C4' },
-                    { key: 'B', lbl: '12:00 – 18:00', clr: '#FFE0B2' },
-                    { key: 'C', lbl: '18:00 – 00:00', clr: '#BBDEFB' },
-                    { key: 'D', lbl: '00:00 – 06:00', clr: '#90CAF9' }
+                    { key: 'A', lbl: '00:00 – 06:00', clr: '#90CAF9' },
+                    { key: 'B', lbl: '06:00 – 12:00', clr: '#FFF9C4' },
+                    { key: 'C', lbl: '12:00 – 18:00', clr: '#FFE0B2' },
+                    { key: 'D', lbl: '18:00 – 00:00', clr: '#BBDEFB' }
                 ];
                 const h = today.getHours();
                 let currentShift = -1;
-                if (h >= 6 && h < 12) currentShift = 0;
-                else if (h >= 12 && h < 18) currentShift = 1;
-                else if (h >= 18) currentShift = 2;
+                if (h < 6) currentShift = 0;
+                else if (h < 12) currentShift = 1;
+                else if (h < 18) currentShift = 2;
                 else currentShift = 3;
 
                 const grid = document.getElementById('dashTodayGrid');
@@ -2173,10 +2178,10 @@
         // ══════════ HORARIO ══════════
         const DIAS_SEM = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
         const turnoMeta = [
-            { key: 'A', lbl: '06:00–12:00', clr: '#FFF9C4', hrs: 6 },
-            { key: 'B', lbl: '12:00–18:00', clr: '#FFE0B2', hrs: 6 },
-            { key: 'C', lbl: '18:00–00:00', clr: '#BBDEFB', hrs: 6 },
-            { key: 'D', lbl: '00:00–06:00', clr: '#90CAF9', hrs: 6 }
+            { key: 'A', lbl: '12am – 6am', clr: '#90CAF9', hrs: 6 },
+            { key: 'B', lbl: '6am – 12pm', clr: '#FFF9C4', hrs: 6 },
+            { key: 'C', lbl: '12pm – 6pm', clr: '#FFE0B2', hrs: 6 },
+            { key: 'D', lbl: '6pm – 12pm', clr: '#BBDEFB', hrs: 6 }
         ];
 
         function renderHorario() {
