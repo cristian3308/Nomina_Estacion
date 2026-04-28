@@ -1864,10 +1864,14 @@
         function buildSchedule(year, month, workers, festivosSet) {
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const days = [];
-            // Same rotation model as Python app:
-            // Anchor: 16-Mar-2026 where A,B,C,D = workers[0..3]
-            const rotationAnchor = 74; // days since 2026-01-01
+            // Anchor: 15-Abr-2026 = par 0 donde A=Fabian, B=Kevin, C=Jhon, D=Huber
+            // workers = [Jhon(0), Fabian(1), Kevin(2), Huber(3)]
+            const rotationAnchor = 104; // días desde 2026-01-01 (15 de Abril)
             const rotationBaseDate = new Date(2026, 0, 1);
+            // Orden inicial: qué índice de worker ocupa cada turno en el par 0
+            // Turno A(sIdx=0)→workers[1]=Fabian, B(1)→workers[2]=Kevin,
+            // C(2)→workers[0]=Jhon, D(3)→workers[3]=Huber
+            const rotOrder = [1, 2, 0, 3];
             for (let d = 1; d <= daysInMonth; d++) {
                 const date = new Date(year, month, d);
                 const globalDay = Math.floor((date - rotationBaseDate) / (1000 * 60 * 60 * 24));
@@ -1877,7 +1881,8 @@
                 const isDomFest = isSunday || isHoliday;
                 const quincena = d <= 15 ? 1 : 2;
                 const dayShifts = shifts.map((_, sIdx) => {
-                    const workerIdx = ((sIdx + pairIndex) % workers.length + workers.length) % workers.length;
+                    const rotIdx = ((sIdx + pairIndex) % workers.length + workers.length) % workers.length;
+                    const workerIdx = rotOrder[rotIdx];
                     return workers[workerIdx];
                 });
                 days.push({ date, d, isSunday, isHoliday, isDomFest, quincena, assignments: dayShifts });
